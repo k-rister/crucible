@@ -4,6 +4,16 @@ name: crucible-weekly-ci
 # force everything to be built.  This will hopefully catch build
 # errors caused by external changes more quickly than what we are
 # currently experiencing.
+#
+# disable_force_builds is set to 'yes' to avoid building images
+# multiple times; the configuration for the image repos used by this
+# workflow dictate that the images should expire before it is run
+# again and thus everytime it runs all of the images should be built
+# by neccesity -- there is no reason to force them to be built which
+# would result in building them multiple times; there is one caveat to
+# this though which is that it does mean that the images will only get
+# built once across all of the releases so it won't force the build to
+# occur in each of the 5 controller image + release combinations
 
 on:
   schedule:
@@ -20,6 +30,7 @@ jobs:
       ci_target_branch: "master"
       github_workspace: "$GITHUB_WORKSPACE"
       force_controller_build: "yes"
+      disable_force_builds: "yes"
     secrets:
       weekly_ci_registry_auth: ${{ secrets.CRUCIBLE_WEEKLY_CI_ENGINES_REGISTRY_AUTH }}
       quay_oauth_token: ${{ secrets.CRUCIBLE_QUAYIO_OAUTH_TOKEN }}
