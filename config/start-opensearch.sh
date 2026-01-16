@@ -9,7 +9,6 @@ mkdir -p /var/lib/crucible/logs
 
 echo "network.host: 0.0.0.0" >> /etc/opensearch/opensearch.yml
 echo "discovery.type: single-node" >> /etc/opensearch/opensearch.yml
-echo "plugins.security.disabled: true" >> /etc/opensearch/opensearch.yml
 
 memtotal_kb=$(grep MemTotal /proc/meminfo | awk '{ print $2 }')
 memtotal_mb=$(echo "${memtotal_kb} / 1024" | bc)

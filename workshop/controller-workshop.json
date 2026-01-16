@@ -23,9 +23,7 @@
         "container-tools",
         "container-storage-fuse",
         "httpd",
-        "opensearch-repo",
         "opensearch",
-        "opensearch-user",
         "nodejs",
         "non-distro-node-deps",
         "gh-cli-repo",
@@ -170,37 +168,22 @@
       }
     },
     {
-      "name": "opensearch-repo",
-      "type": "files",
-      "files_info": {
-        "files": [
-          {
-            "src": "https://artifacts.opensearch.org/releases/bundle/opensearch/2.x/opensearch-2.x.repo",
-            "dst": "/etc/yum.repos.d/opensearch-2.x.repo"
-          }
+      "name": "opensearch",
+      "type": "manual",
+      "manual_info": {
+        "commands": [
+          "if [ \"$(uname -m)\" == 'x86_64' ]; then echo 'Processing x86_64'; curl --output /usr/share/opensearch.tar.gz https://artifacts.opensearch.org/releases/core/opensearch/3.4.0/opensearch-min-3.4.0-linux-x64.tar.gz; else echo 'Not x86_64'; fi",
+          "if [ \"$(uname -m)\" == 'aarch64' ]; then echo 'Processing aarch64'; curl --output /usr/share/opensearch.tar.gz https://artifacts.opensearch.org/releases/core/opensearch/3.4.0/opensearch-min-3.4.0-linux-arm64.tar.gz; else echo 'Not aarch64'; fi",
+          "tar --directory /usr/share --extract --gunzip --file /usr/share/opensearch.tar.gz",
+          "rm --verbose /usr/share/opensearch.tar.gz",
+          "ln --symbolic --verbose /usr/share/opensearch-* /usr/share/opensearch",
+          "ln --symbolic --verbose /usr/share/opensearch/config /etc/opensearch",
+          "sed -i '2i\\sed -i -e \"/plugins.security.disabled/d\" /etc/opensearch/opensearch.yml' /usr/share/opensearch/bin/opensearch",
+          "adduser --system --shell /bin/bash --user-group opensearch",
+          "usermod --append --groups opensearch opensearch",
+          "chown --recursive opensearch:opensearch /usr/share/opensearch*"
         ]
       }
-    },
-    {
-      "name": "opensearch",
-      "type": "distro",
-      "distro_info": {
-        "packages": [
-          "opensearch"
-        ],
-        "environment": {
-          "OPENSEARCH_INITIAL_ADMIN_PASSWORD": "foo"
-        }
-      }
-    },
-    {
-      "name": "opensearch-user",
-      "type": "manual",
-        "manual_info": {
-          "commands": [
-            "chsh --shell /bin/bash opensearch"
-          ]
-        }
     },
     {
       "name": "nodejs",
