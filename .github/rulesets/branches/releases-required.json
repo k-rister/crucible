@@ -1,6 +1,6 @@
 {
   "id": 3637235,
-  "name": "releases",
+  "name": "releases-required",
   "target": "branch",
   "source_type": "Repository",
   "source": "perftool-incubator/crucible",
@@ -21,12 +21,12 @@
     {
       "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
-        "automatic_copilot_code_review_enabled": false,
         "allowed_merge_methods": [
           "merge"
         ]
