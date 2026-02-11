@@ -321,6 +321,16 @@
             }
         },
         {
+            "name": "power",
+            "type": "tool",
+            "repository": "https://github.com/perftool-incubator/tool-power",
+            "primary-branch": "main",
+            "checkout": {
+                "mode": "follow",
+                "target": "main"
+            }
+        },
+        {
             "name": "examples",
             "type": "doc",
             "repository": "https://github.com/perftool-incubator/crucible-examples",
