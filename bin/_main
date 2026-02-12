@@ -43,10 +43,10 @@ elif [ "${1}" == "ls" -o "${1}" == "tags" -o "${1}" == "result-completion" ]; th
 elif [ "${1}" == "instances" ]; then
     shift
     if [ -z "${1}" ]; then
-        ${podman_run} --name crucible-manage-instances-${SESSION_ID} "${container_common_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${CRUCIBLE_HOME}/bin/manage_instances.py --cfg ${INSTANCES_CFG} info
+        run_manage_instances info
         EXIT_VAL=$?
     else
-        ${podman_run} --name crucible-manage-instances-${SESSION_ID} "${container_common_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${CRUCIBLE_HOME}/bin/manage_instances.py --cfg ${INSTANCES_CFG} "$@"
+        run_manage_instances "$@"
         EXIT_VAL=$?
     fi
 elif [ "${1}" == "registries" ]; then
@@ -95,14 +95,7 @@ elif [ "${1}" == "get" ]; then
             EXIT_VAL=$?
         elif [ "${1}" == "metric" ]; then
             shift
-            cdm_query_opt=$(${podman_run}\
-                --name crucible-manage-instances--${SESSION_ID}\
-                ${container_common_args[@]}\
-                ${container_non_service_args[@]}\
-                ${CRUCIBLE_CONTROLLER_IMAGE}\
-                ${CRUCIBLE_HOME}/bin/manage_instances.py\
-                --cfg ${INSTANCES_CFG}\
-                query-opt)
+            cdm_query_opt=$(run_manage_instances query-opt)
             cdm_query_cmd="${CRUCIBLE_HOME}/subprojects/core/CommonDataModel/queries/cdmq/get-metric-data.sh $@ $cdm_query_opt"
             ${podman_run} --name crucible-get-metric-${SESSION_ID} "${container_common_args[@]}" "${container_rs_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${cdm_query_cmd}
             EXIT_VAL=$?
@@ -124,44 +117,7 @@ elif [ "${1}" == "rm" ]; then
 
     # Get the options needed to delete the documents (the host and optional password
     # information for the default opensearch instance for indexing)
-    cdmver_opt=""
-    access_opt=""
-
-    if [ "$instance" = "" ]; then
-        # Use the default instance
-        instance=$(${podman_run}\
-            --name crucible-manage-instances--${SESSION_ID}\
-            ${container_common_args[@]}\
-            ${container_non_service_args[@]}\
-            ${CRUCIBLE_CONTROLLER_IMAGE}\
-            ${CRUCIBLE_HOME}/bin/manage_instances.py\
-            --cfg ${INSTANCES_CFG}\
-            index-instance)
-    fi
-
-    cdmver_opt=$(${podman_run}\
-        --name crucible-manage-instances--${SESSION_ID}\
-        ${container_common_args[@]}\
-        ${container_non_service_args[@]}\
-        ${CRUCIBLE_CONTROLLER_IMAGE}\
-        ${CRUCIBLE_HOME}/bin/manage_instances.py\
-        --cfg ${INSTANCES_CFG}\
-        instance-cdmver-opt --name ${instance})
-    if [ "$cdmver_opt" == "" ]; then
-        echo "ERROR: CDM version informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
-        exit 1
-    fi
-
-    access_opt=$(${podman_run}\
-        --name crucible-manage-instances--${SESSION_ID}\
-        ${container_common_args[@]}\
-        ${container_non_service_args[@]}\
-        ${CRUCIBLE_CONTROLLER_IMAGE}\
-        ${CRUCIBLE_HOME}/bin/manage_instances.py\
-        --cfg ${INSTANCES_CFG}\
-        instance-host-access-opt --name ${instance})
-    if [ "$access_opt" == "" ]; then
-        echo "ERROR: access informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
+    if ! get_instance_metadata "${instance}"; then
         exit 1
     fi
 
@@ -229,40 +185,7 @@ elif [ "${1}" == "index" ]; then
         shift
     fi
 
-    if [ "$instance" = "" ]; then
-        # Get the default instance to use
-        instance=$(${podman_run}\
-            --name crucible-manage-instances--${SESSION_ID}\
-            ${container_common_args[@]}\
-            ${container_non_service_args[@]}\
-            ${CRUCIBLE_CONTROLLER_IMAGE}\
-            ${CRUCIBLE_HOME}/bin/manage_instances.py\
-            --cfg ${INSTANCES_CFG}\
-            index-instance)
-    fi
-
-    cdmver_opt=$(${podman_run}\
-        --name crucible-manage-instances--${SESSION_ID}\
-        ${container_common_args[@]}\
-        ${container_non_service_args[@]}\
-        ${CRUCIBLE_CONTROLLER_IMAGE}\
-        ${CRUCIBLE_HOME}/bin/manage_instances.py\
-        --cfg ${INSTANCES_CFG}\
-        instance-cdmver-opt --name ${instance})
-    access_opt=$(${podman_run}\
-        --name crucible-manage-instances--${SESSION_ID}\
-        ${container_common_args[@]}\
-        ${container_non_service_args[@]}\
-        ${CRUCIBLE_CONTROLLER_IMAGE}\
-        ${CRUCIBLE_HOME}/bin/manage_instances.py\
-        --cfg ${INSTANCES_CFG}\
-        instance-host-access-opt --name ${instance})
-    if [ "$access_opt" == "" ]; then
-        echo "ERROR: access informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
-        exit 1
-    fi
-    if [ "$cdmver_opt" == "" ]; then
-        echo "ERROR: CDM version informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
+    if ! get_instance_metadata "${instance}"; then
         exit 1
     fi
 
@@ -442,39 +365,8 @@ elif [ "${1}" == "run" ]; then
 
     if [ ${RC} == 0 ]; then
         post_process_run ${base_run_dir} &&\
-        instance=$(${podman_run}\
-            --name crucible-manage-instances--${SESSION_ID}\
-            ${container_common_args[@]}\
-            ${container_non_service_args[@]}\
-            ${CRUCIBLE_CONTROLLER_IMAGE}\
-            ${CRUCIBLE_HOME}/bin/manage_instances.py\
-            --cfg ${INSTANCES_CFG}\
-            index-instance)
-        echo "Using instance ${instance} for indexing"
-        cdmver_opt=$(${podman_run}\
-            --name crucible-manage-instances--${SESSION_ID}\
-            ${container_common_args[@]}\
-            ${container_non_service_args[@]}\
-            ${CRUCIBLE_CONTROLLER_IMAGE}\
-            ${CRUCIBLE_HOME}/bin/manage_instances.py\
-            --cfg ${INSTANCES_CFG}\
-            instance-cdmver-opt --name ${instance})
-        access_opt=$(${podman_run}\
-            --name crucible-manage-instances--${SESSION_ID}\
-            ${container_common_args[@]}\
-            ${container_non_service_args[@]}\
-            ${CRUCIBLE_CONTROLLER_IMAGE}\
-            ${CRUCIBLE_HOME}/bin/manage_instances.py\
-            --cfg ${INSTANCES_CFG}\
-            instance-host-access-opt --name ${instance})
-        if [ "$access_opt" == "" ]; then
-            echo "ERROR: access informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
-            exit 1
-        fi
-        if [ "$cdmver_opt" == "" ]; then
-            echo "ERROR: CDM version informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
-            exit 1
-        fi
+        get_instance_metadata "" &&\
+        echo "Using instance ${instance} for indexing" &&\
         index_run "${access_opt}" "${cdmver_opt}" "$base_run_dir" &&\
         get_result_to_file "${base_run_dir}" --run $(extract_run_id "${base_run_dir}")
         EXIT_VAL=$?

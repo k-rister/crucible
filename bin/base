@@ -405,7 +405,7 @@ function extract_primary_periods() {
     shift
     RUN_ID=$(extract_run_id ${RUN_DIR})
 
-    cdm_query_opt=$(${podman_run} --name crucible-get-result-opt-${SESSION_ID} "${container_common_args[@]}" "${container_rs_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${CRUCIBLE_HOME}/bin/manage_instances.py --cfg ${INSTANCES_CFG} query-opt)
+    cdm_query_opt=$(run_manage_instances query-opt)
     cdm_query_cmd="${CRUCIBLE_HOME}/subprojects/core/CommonDataModel/queries/cdmq/get-primary-periods.sh $cdm_query_opt --run ${RUN_ID}"
     ${podman_run} --name crucible-get-primary-periods-${SESSION_ID} "${container_common_args[@]}" "${container_rs_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${cdm_query_cmd}
     RC=$?
@@ -520,7 +520,7 @@ function get_result_backend() {
     local RC
     local cdm_query_opt cdm_query_cmd
 
-    cdm_query_opt=$(${podman_run} --name crucible-get-result-opt-${SESSION_ID} "${container_common_args[@]}" "${container_rs_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${CRUCIBLE_HOME}/bin/manage_instances.py --cfg ${INSTANCES_CFG} query-opt)
+    cdm_query_opt=$(run_manage_instances query-opt)
     cdm_query_cmd="${CRUCIBLE_HOME}/subprojects/core/CommonDataModel/queries/cdmq/get-result-summary.sh $@ $cdm_query_opt"
     ${podman_run} --name crucible-get-result-${SESSION_ID} "${container_common_args[@]}" "${container_rs_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${cdm_query_cmd}
     RC=$?
@@ -890,6 +890,47 @@ function validate_json_schema() {
 export TOOLBOX_HOME=${CRUCIBLE_HOME}/subprojects/core/toolbox
 export RICKSHAW_HOME=${CRUCIBLE_HOME}/subprojects/core/rickshaw
 
+# Helper function to run manage_instances.py with common container args
+function run_manage_instances() {
+    ${podman_run} \
+        --name crucible-manage-instances--${SESSION_ID} \
+        ${container_common_args[@]} \
+        ${container_non_service_args[@]} \
+        ${CRUCIBLE_CONTROLLER_IMAGE} \
+        ${CRUCIBLE_HOME}/bin/manage_instances.py \
+        --cfg ${INSTANCES_CFG} \
+        "$@"
+}
+
+# Helper function to get instance metadata (instance, cdmver_opt, access_opt)
+# Usage: get_instance_metadata [instance_name]
+# If instance_name is not provided, uses the default index instance
+# Returns via global variables: instance, cdmver_opt, access_opt
+function get_instance_metadata() {
+    local specified_instance="${1}"
+
+    if [ -z "${specified_instance}" ]; then
+        # Get the default instance
+        instance=$(run_manage_instances index-instance)
+    else
+        instance="${specified_instance}"
+    fi
+
+    cdmver_opt=$(run_manage_instances instance-cdmver-opt --name ${instance})
+    if [ -z "${cdmver_opt}" ]; then
+        echo "ERROR: CDM version informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
+        return 1
+    fi
+
+    access_opt=$(run_manage_instances instance-host-access-opt --name ${instance})
+    if [ -z "${access_opt}" ]; then
+        echo "ERROR: access informaiton for Opensearch instance ${instance} was empty.  Did you use a valid instance?"
+        return 1
+    fi
+
+    return 0
+}
+
 # make sure the user has a .crucible directory for storing things
 USER_STORE=$HOME/.crucible
 if [ ! -d ${USER_STORE} ]; then
@@ -1074,5 +1115,5 @@ fi
 
 # If the instances.json is missing, generate the default one
 if [ ! -e ${INSTANCES_CFG} ]; then
-    ${podman_run} --name crucible-gen-instances-cfg-${SESSION_ID} "${container_common_args[@]}" "${container_non_service_args[@]}" ${CRUCIBLE_CONTROLLER_IMAGE} ${CRUCIBLE_HOME}/bin/manage_instances.py --cfg ${INSTANCES_CFG} info >/dev/null
+    run_manage_instances info >/dev/null
 fi
